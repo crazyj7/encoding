@@ -20,7 +20,12 @@ function App() {
   const [resultTextCP949, setResultTextCP949] = useState('');
   const [resultTextUTF8, setResultTextUTF8] = useState('');
   const [resultTextUTF8Bom, setResultTextUTF8Bom] = useState('');
-  const [resultHash, setResultHash] = useState('');
+  const [resultHash, setResultHash] = useState({
+    md5: '',
+    sha1: '',
+    sha256: '',
+    sha512: ''
+  });
 
   // 변환 결과 영역을 위한 상태들에 추가
   const [resultTextInput, setResultTextInput] = useState('');
@@ -332,7 +337,12 @@ function App() {
     } else {
       // 입력이 비어있으면 모든 결과 초기화
       setTempResultHexInput('');
-      setResultHash('');
+      setResultHash({
+        md5: '',
+        sha1: '',
+        sha256: '',
+        sha512: ''
+      });
       setResultTextCP949('');
       setResultTextUTF8('');
       setResultTextUTF8Bom('');
@@ -347,13 +357,20 @@ function App() {
         // 입력된 hex를 바이트 배열로 변환
         const bytes = new Uint8Array(cleanHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
         
-        // SHA256 계산 - WordArray로 변환하여 계산
+        // WordArray로 변환
         const words = [];
         for (let i = 0; i < bytes.length; i++) {
           words[i >>> 2] |= bytes[i] << (24 - (i % 4) * 8);
         }
         const wordArray = crypto.lib.WordArray.create(words, bytes.length);
-        setResultHash(crypto.SHA256(wordArray).toString());
+
+        // 해시값 계산
+        setResultHash({
+          md5: crypto.MD5(wordArray).toString(),
+          sha1: crypto.SHA1(wordArray).toString(),
+          sha256: crypto.SHA256(wordArray).toString(),
+          sha512: crypto.SHA512(wordArray).toString()
+        });
 
         // CP949로 해석
         try {
@@ -390,7 +407,12 @@ function App() {
         setResultTextCP949('(잘못된 hex 값)');
         setResultTextUTF8('(잘못된 hex 값)');
         setResultTextUTF8Bom('(잘못된 hex 값)');
-        setResultHash('');
+        setResultHash({
+          md5: '',
+          sha1: '',
+          sha256: '',
+          sha512: ''
+        });
       }
     }
   };
@@ -530,6 +552,23 @@ function App() {
             </div>
 
             <div className="result-item">
+              <h3>HTML Escape:</h3>
+              <pre>
+                {resultTextUTF8 && resultTextUTF8
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#039;')}
+              </pre>
+            </div>
+
+            <div className="result-item">
+              <h3>URL Encoding:</h3>
+              <pre>{resultTextUTF8 && encodeURIComponent(resultTextUTF8)}</pre>
+            </div>
+
+            <div className="result-item">
               <h3>Base64:</h3>
               <pre>
                 {resultTextUTF8 && btoa(unescape(encodeURIComponent(resultTextUTF8)))}
@@ -547,8 +586,23 @@ function App() {
             </div>
 
             <div className="result-item">
-              <h3>SHA256:</h3>
-              <pre>{resultHash}</pre>
+              <h3>MD5:</h3>
+              <pre>{resultHash?.md5}</pre>
+            </div>
+
+            <div className="result-item">
+              <h3>SHA-1:</h3>
+              <pre>{resultHash?.sha1}</pre>
+            </div>
+
+            <div className="result-item">
+              <h3>SHA-256:</h3>
+              <pre>{resultHash?.sha256}</pre>
+            </div>
+
+            <div className="result-item">
+              <h3>SHA-512:</h3>
+              <pre>{resultHash?.sha512}</pre>
             </div>
           </div>
         </div>
