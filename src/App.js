@@ -432,6 +432,21 @@ function App() {
     }
   };
 
+  // clearResultInputs 함수 추가
+  const clearResultInputs = () => {
+    setResultTextInput('');
+    setTempResultHexInput('');
+    setResultTextCP949('');
+    setResultTextUTF8('');
+    setResultTextUTF8Bom('');
+    setResultHash({
+      md5: '',
+      sha1: '',
+      sha256: '',
+      sha512: ''
+    });
+  };
+
   // Set document title
   useEffect(() => {
     document.title = "온라인 인코딩 도구 (CP949)";
@@ -513,7 +528,12 @@ function App() {
 
         <div className="results-container">
           <div className="results-header">
-            <h2>인코딩 변환 테스트</h2>
+            <div className="header-with-button">
+              <h2>인코딩 변환 테스트</h2>
+              <button onClick={clearResultInputs} className="clear-button">
+                Clear All
+              </button>
+            </div>
             <div className="result-input-group">
               <h3>Text Input:</h3>
               <textarea
