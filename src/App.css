@@ -254,3 +254,59 @@ pre {
   border-bottom: none;
   padding-bottom: 0;
 }
+
+/* 자모음 분리 섹션 스타일 */
+.jamo-container {
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.jamo-header {
+  margin-bottom: 15px;
+}
+
+.jamo-input-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.jamo-input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.jamo-input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.jamo-input-group h3 {
+  color: #34495e;
+  font-size: 13px;
+  margin: 0 0 4px 0;
+  font-weight: 600;
+}
+
+.jamo-input-group textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 8px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 13px;
+  resize: vertical;
+  font-family: 'Consolas', monospace;
+  background-color: #edf2ff;
+  transition: all 0.2s;
+}
+
+.jamo-input-group textarea:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import crypto from 'crypto-js';
 import iconv from 'iconv-lite';
@@ -29,6 +29,12 @@ function App() {
 
   // 변환 결과 영역을 위한 상태들에 추가
   const [resultTextInput, setResultTextInput] = useState('');
+
+  // 자모음 분리/병합을 위한 상태들
+  const [jamoSeparatedInput, setJamoSeparatedInput] = useState('');
+  const [jamoMergedInput, setJamoMergedInput] = useState('');
+  // 현재 사용자가 편집 중인 입력창: 'merged' | 'separated' | null
+  const [activeJamoField, setActiveJamoField] = useState(null);
 
   // CP949 text input handler
   const handleCp949TextChange = (e) => {
@@ -447,6 +453,152 @@ function App() {
     });
   };
 
+  // 한글 자모음 분리 함수
+  const separateJamo = (text) => {
+    if (!text) return '';
+    
+    const result = [];
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const code = char.charCodeAt(0);
+      
+      // 한글 완성형 범위 (가-힣)
+      if (code >= 0xAC00 && code <= 0xD7A3) {
+        const base = code - 0xAC00;
+        const initial = Math.floor(base / 588); // 초성
+        const medial = Math.floor((base % 588) / 28); // 중성
+        const final = base % 28; // 종성
+        
+        // 초성 (ㄱ-ㅎ)
+        const initialChars = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+        result.push(initialChars[initial]);
+        
+        // 중성 (ㅏ-ㅣ)
+        const medialChars = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'];
+        result.push(medialChars[medial]);
+        
+        // 종성 (ㄱ-ㅎ, 없음)
+        if (final > 0) {
+          const finalChars = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+          result.push(finalChars[final]);
+        }
+      } else {
+        // 한글이 아닌 문자는 그대로 추가
+        result.push(char);
+      }
+    }
+    return result.join('');
+  };
+
+  // 한글 자모음 병합 함수
+  const mergeJamo = (text) => {
+    if (!text) return '';
+    
+    const result = [];
+    let i = 0;
+    
+    while (i < text.length) {
+      const char = text[i];
+      const code = char.charCodeAt(0);
+      
+      // 초성 범위 (ㄱ-ㅎ)
+      if (code >= 0x3131 && code <= 0x314E) {
+        const initial = code - 0x3131;
+        
+        // 다음 문자가 중성인지 확인
+        if (i + 1 < text.length) {
+          const nextChar = text[i + 1];
+          const nextCode = nextChar.charCodeAt(0);
+          
+          // 중성 범위 (ㅏ-ㅣ)
+          if (nextCode >= 0x314F && nextCode <= 0x3163) {
+            const medial = nextCode - 0x314F;
+            
+            // 다음 문자가 종성인지 확인
+            let final = 0;
+            if (i + 2 < text.length) {
+              const finalChar = text[i + 2];
+              const finalCode = finalChar.charCodeAt(0);
+              
+              // 종성 범위 (ㄱ-ㅎ)
+              if (finalCode >= 0x3131 && finalCode <= 0x314E) {
+                const finalChars = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+                const finalIndex = finalChars.indexOf(finalChar);
+                if (finalIndex > 0) {
+                  final = finalIndex;
+                  i += 3; // 초성, 중성, 종성 모두 소비
+                } else {
+                  i += 2; // 초성, 중성만 소비
+                }
+              } else {
+                i += 2; // 초성, 중성만 소비
+              }
+            } else {
+              i += 2; // 초성, 중성만 소비
+            }
+            
+            // 완성형 한글 생성
+            const completeCode = 0xAC00 + initial * 588 + medial * 28 + final;
+            result.push(String.fromCharCode(completeCode));
+          } else {
+            // 중성이 아니면 초성만 그대로 추가
+            result.push(char);
+            i++;
+          }
+        } else {
+          // 다음 문자가 없으면 초성만 그대로 추가
+          result.push(char);
+          i++;
+        }
+      } else {
+        // 초성이 아니면 그대로 추가
+        result.push(char);
+        i++;
+      }
+    }
+    return result.join('');
+  };
+
+  // 자모음 분리 입력 핸들러
+  const handleJamoSeparatedChange = (e) => {
+    setActiveJamoField('separated');
+    setJamoSeparatedInput(e.target.value);
+  };
+
+  // 자모음 병합 입력 핸들러
+  const handleJamoMergedChange = (e) => {
+    setActiveJamoField('merged');
+    setJamoMergedInput(e.target.value);
+  };
+
+  // 자모음 입력 초기화 함수
+  const clearJamoInputs = () => {
+    setJamoSeparatedInput('');
+    setJamoMergedInput('');
+  };
+
+  // 자모음 병합 입력 변화 감지 (사용자 입력 → 분리값 계산)
+  useEffect(() => {
+    if (activeJamoField !== 'merged') return;
+    if (jamoMergedInput) {
+      const separatedText = separateJamo(jamoMergedInput);
+      setJamoSeparatedInput(separatedText);
+    } else {
+      setJamoSeparatedInput('');
+    }
+  }, [jamoMergedInput, activeJamoField]);
+
+  // 자모음 분리 입력 변화 감지 (사용자 입력 → 병합값 계산)
+  useEffect(() => {
+    if (activeJamoField !== 'separated') return;
+    if (jamoSeparatedInput) {
+      const mergedText = mergeJamo(jamoSeparatedInput);
+      setJamoMergedInput(mergedText);
+    } else {
+      setJamoMergedInput('');
+    }
+  }, [jamoSeparatedInput, activeJamoField]);
+
   // Set document title
   useEffect(() => {
     document.title = "온라인 인코딩 도구 (CP949)";
@@ -623,6 +775,38 @@ function App() {
             <div className="result-item">
               <h3>SHA-512:</h3>
               <pre>{resultHash?.sha512}</pre>
+            </div>
+          </div>
+        </div>
+
+        <div className="jamo-container">
+          <div className="jamo-header">
+            <div className="header-with-button">
+              <h2>자모음 분리</h2>
+              <button onClick={clearJamoInputs} className="clear-button">
+                Clear All
+              </button>
+            </div>
+          </div>
+          
+          <div className="jamo-input-grid">
+            <div className="jamo-input-row">
+              <div className="jamo-input-group">
+                <h3>분리 입력:</h3>
+                <textarea
+                  value={jamoSeparatedInput}
+                  onChange={handleJamoSeparatedChange}
+                  placeholder="자모음이 분리된 텍스트를 입력하세요... (예: ㄱㅏㄱㅗ)"
+                />
+              </div>
+              <div className="jamo-input-group">
+                <h3>병합 입력:</h3>
+                <textarea
+                  value={jamoMergedInput}
+                  onChange={handleJamoMergedChange}
+                  placeholder="완성형 한글 텍스트를 입력하세요... (예: 가고)"
+                />
+              </div>
             </div>
           </div>
         </div>
