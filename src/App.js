@@ -457,6 +457,9 @@ function App() {
   const separateJamo = (text) => {
     if (!text) return '';
     
+    console.log('separateJamo 입력:', text);
+    console.log('separateJamo 입력 바이너리:', Array.from(text).map(c => c.charCodeAt(0).toString(16).padStart(4, '0')).join(' '));
+    
     const result = [];
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
@@ -487,76 +490,154 @@ function App() {
         result.push(char);
       }
     }
-    return result.join('');
+    const resultText = result.join('');
+    console.log('separateJamo 결과:', resultText);
+    console.log('separateJamo 결과 바이너리:', Array.from(resultText).map(c => c.charCodeAt(0).toString(16).padStart(4, '0')).join(' '));
+    return resultText;
   };
 
-  // 한글 자모음 병합 함수
+  // 한글 자모음 병합 함수 (한글 자모 + 호환 자모 지원)
   const mergeJamo = (text) => {
     if (!text) return '';
+    
+    console.log('mergeJamo 입력:', text);
+    console.log('mergeJamo 입력 바이너리:', Array.from(text).map(c => c.charCodeAt(0).toString(16).padStart(4, '0')).join(' '));
+    
+    // 표준 인덱스 매핑을 위한 테이블 (먼저 정의하여 아래 유틸에서 참조 가능하게 함)
+    const initialChars = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+    const medialChars = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'];
+    const finalChars = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+
+    // 한글 자모 → 호환 자모 변환 함수
+    const jamoToCompat = (code) => {
+      // 초성 (0x1100-0x1112)
+      if (code >= 0x1100 && code <= 0x1112) {
+        const initialMap = [0x3131, 0x3132, 0x3134, 0x3137, 0x3138, 0x3139, 0x3141, 0x3142, 0x3143, 0x3145, 0x3146, 0x3147, 0x3148, 0x3149, 0x314A, 0x314B, 0x314C, 0x314D, 0x314E];
+        return initialMap[code - 0x1100];
+      }
+      // 중성 (0x1161-0x1175)
+      if (code >= 0x1161 && code <= 0x1175) {
+        const medialMap = [0x314F, 0x3150, 0x3151, 0x3152, 0x3153, 0x3154, 0x3155, 0x3156, 0x3157, 0x3158, 0x3159, 0x315A, 0x315B, 0x315C, 0x315D, 0x315E, 0x315F, 0x3160, 0x3161, 0x3162, 0x3163];
+        return medialMap[code - 0x1161];
+      }
+      // 종성 (0x11A8-0x11C2)
+      if (code >= 0x11A8 && code <= 0x11C2) {
+        // 종성은 표준 인덱스 순서(finalChars)와 동일한 순서로 매핑해야 함
+        const offset = code - 0x11A8; // 0..26 → finalChars[1..27]
+        const compatChar = finalChars[offset + 1];
+        return compatChar.charCodeAt(0);
+      }
+      return code;
+    };
+    
+    // 한글 자모를 호환 자모로 변환
+    const convertedText = Array.from(text).map(char => {
+      const code = char.charCodeAt(0);
+      const compatCode = jamoToCompat(code);
+      return String.fromCharCode(compatCode);
+    }).join('');
+    
+    console.log('변환된 호환 자모:', convertedText);
+    console.log('변환된 호환 자모 바이너리:', Array.from(convertedText).map(c => c.charCodeAt(0).toString(16).padStart(4, '0')).join(' '));
+    
+    // 위에서 정의된 initialChars, medialChars, finalChars 사용
     
     const result = [];
     let i = 0;
     
-    while (i < text.length) {
-      const char = text[i];
+    while (i < convertedText.length) {
+      const char = convertedText[i];
       const code = char.charCodeAt(0);
+      
+      console.log(`문자 ${i}: '${char}' (0x${code.toString(16).padStart(4, '0')})`);
       
       // 초성 범위 (ㄱ-ㅎ)
       if (code >= 0x3131 && code <= 0x314E) {
-        const initial = code - 0x3131;
+        const initial = initialChars.indexOf(char);
+        if (initial < 0) {
+          console.log('  초성 매핑 실패, 그대로 추가');
+          result.push(char);
+          i++;
+          continue;
+        }
+        console.log(`  초성 발견: ${initial} (${char})`);
         
-        // 다음 문자가 중성인지 확인
-        if (i + 1 < text.length) {
-          const nextChar = text[i + 1];
+        // 중성 찾기 (다음 문자들 중에서)
+        let medial = -1;
+        let medialPos = -1;
+        for (let j = i + 1; j < convertedText.length; j++) {
+          const nextChar = convertedText[j];
           const nextCode = nextChar.charCodeAt(0);
-          
-          // 중성 범위 (ㅏ-ㅣ)
           if (nextCode >= 0x314F && nextCode <= 0x3163) {
-            const medial = nextCode - 0x314F;
+            medial = medialChars.indexOf(nextChar);
+            if (medial >= 0) {
+              medialPos = j;
+              console.log(`  중성 발견: ${medial} (${nextChar}) at position ${j}`);
+              break;
+            }
+          }
+        }
+        
+        if (medial >= 0) {
+          // 종성 찾기 (중성 다음 문자들 중에서)
+          let final = 0;
+          let finalPos = medialPos;
+          
+          // 중성 다음에 초성 범위 문자가 있는지 확인
+          if (medialPos + 1 < convertedText.length) {
+            const nextChar = convertedText[medialPos + 1];
+            const nextCode = nextChar.charCodeAt(0);
             
-            // 다음 문자가 종성인지 확인
-            let final = 0;
-            if (i + 2 < text.length) {
-              const finalChar = text[i + 2];
-              const finalCode = finalChar.charCodeAt(0);
+            // 다음 문자가 초성 범위이고, 그 다음에 중성이 없으면 종성으로 간주
+            if (nextCode >= 0x3131 && nextCode <= 0x314E) {
+              // 그 다음 문자가 중성인지 확인
+              let hasNextMedial = false;
+              if (medialPos + 2 < convertedText.length) {
+                const nextNextChar = convertedText[medialPos + 2];
+                const nextNextCode = nextNextChar.charCodeAt(0);
+                if (nextNextCode >= 0x314F && nextNextCode <= 0x3163) {
+                  hasNextMedial = true;
+                }
+              }
               
-              // 종성 범위 (ㄱ-ㅎ)
-              if (finalCode >= 0x3131 && finalCode <= 0x314E) {
-                const finalChars = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
-                const finalIndex = finalChars.indexOf(finalChar);
+              // 다음에 중성이 없으면 종성으로 간주
+              if (!hasNextMedial) {
+                const finalIndex = finalChars.indexOf(nextChar);
                 if (finalIndex > 0) {
                   final = finalIndex;
-                  i += 3; // 초성, 중성, 종성 모두 소비
-                } else {
-                  i += 2; // 초성, 중성만 소비
+                  finalPos = medialPos + 1;
+                  console.log(`  종성 발견: ${final} (${nextChar}) at position ${finalPos}`);
                 }
               } else {
-                i += 2; // 초성, 중성만 소비
+                console.log(`  다음에 중성이 있음, 종성 아님`);
               }
-            } else {
-              i += 2; // 초성, 중성만 소비
             }
-            
-            // 완성형 한글 생성
-            const completeCode = 0xAC00 + initial * 588 + medial * 28 + final;
-            result.push(String.fromCharCode(completeCode));
-          } else {
-            // 중성이 아니면 초성만 그대로 추가
-            result.push(char);
-            i++;
           }
+          
+          // 완성형 한글 생성
+          const completeCode = 0xAC00 + initial * 588 + medial * 28 + final;
+          const completeChar = String.fromCharCode(completeCode);
+          console.log(`  완성형 생성: '${completeChar}' (0x${completeCode.toString(16).padStart(4, '0')})`);
+          result.push(completeChar);
+          
+          // 처리된 위치로 이동
+          i = finalPos + 1;
         } else {
-          // 다음 문자가 없으면 초성만 그대로 추가
+          console.log(`  중성 없음, 초성만 그대로 추가`);
           result.push(char);
           i++;
         }
       } else {
-        // 초성이 아니면 그대로 추가
+        console.log(`  초성 아님, 그대로 추가`);
         result.push(char);
         i++;
       }
     }
-    return result.join('');
+    
+    const resultText = result.join('');
+    console.log('mergeJamo 결과:', resultText);
+    console.log('mergeJamo 결과 바이너리:', Array.from(resultText).map(c => c.charCodeAt(0).toString(16).padStart(4, '0')).join(' '));
+    return resultText;
   };
 
   // 자모음 분리 입력 핸들러
@@ -571,6 +652,28 @@ function App() {
     setJamoMergedInput(e.target.value);
   };
 
+  // 포커스 핸들러 (편집중 필드 표시)
+  const handleJamoSeparatedFocus = () => setActiveJamoField('separated');
+  const handleJamoMergedFocus = () => setActiveJamoField('merged');
+
+  // 붙여넣기 핸들러 (클립보드 입력 보장)
+  const handleJamoSeparatedPaste = (e) => {
+    setActiveJamoField('separated');
+    // 붙여넣기 완료 후 DOM 값으로 상태 동기화
+    setTimeout(() => {
+      const newText = e.target.value;
+      setJamoSeparatedInput(newText);
+    }, 0);
+  };
+
+  const handleJamoMergedPaste = (e) => {
+    setActiveJamoField('merged');
+    setTimeout(() => {
+      const newText = e.target.value;
+      setJamoMergedInput(newText);
+    }, 0);
+  };
+
   // 자모음 입력 초기화 함수
   const clearJamoInputs = () => {
     setJamoSeparatedInput('');
@@ -582,6 +685,7 @@ function App() {
     if (activeJamoField !== 'merged') return;
     if (jamoMergedInput) {
       const separatedText = separateJamo(jamoMergedInput);
+      console.log('병합 입력:', jamoMergedInput, '→ 분리 결과:', separatedText);
       setJamoSeparatedInput(separatedText);
     } else {
       setJamoSeparatedInput('');
@@ -593,6 +697,7 @@ function App() {
     if (activeJamoField !== 'separated') return;
     if (jamoSeparatedInput) {
       const mergedText = mergeJamo(jamoSeparatedInput);
+      console.log('분리 입력:', jamoSeparatedInput, '→ 병합 결과:', mergedText);
       setJamoMergedInput(mergedText);
     } else {
       setJamoMergedInput('');
@@ -796,16 +901,28 @@ function App() {
                 <textarea
                   value={jamoSeparatedInput}
                   onChange={handleJamoSeparatedChange}
+                  onFocus={handleJamoSeparatedFocus}
+                  onPaste={handleJamoSeparatedPaste}
                   placeholder="자모음이 분리된 텍스트를 입력하세요... (예: ㄱㅏㄱㅗ)"
                 />
+                <div className="jamo-hex-output">
+                  <h4>분리 입력 Hex:</h4>
+                  <pre>{jamoSeparatedInput ? Array.from(jamoSeparatedInput).map(c => c.charCodeAt(0).toString(16).padStart(4, '0')).join(' ') : ''}</pre>
+                </div>
               </div>
               <div className="jamo-input-group">
                 <h3>병합 입력:</h3>
                 <textarea
                   value={jamoMergedInput}
                   onChange={handleJamoMergedChange}
+                  onFocus={handleJamoMergedFocus}
+                  onPaste={handleJamoMergedPaste}
                   placeholder="완성형 한글 텍스트를 입력하세요... (예: 가고)"
                 />
+                <div className="jamo-hex-output">
+                  <h4>병합 입력 Hex:</h4>
+                  <pre>{jamoMergedInput ? Array.from(jamoMergedInput).map(c => c.charCodeAt(0).toString(16).padStart(4, '0')).join(' ') : ''}</pre>
+                </div>
               </div>
             </div>
           </div>
